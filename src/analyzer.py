@@ -46,21 +46,18 @@ class TableUsageAnalyzer:
         Returns:
             DataFrame: A DataFrame with table identifiers and the last access date.
         """
-        # We query the audit log for events related to Unity Catalog.
-        # The full table name is extracted from the request_params map.
-        # We then split the full name to get catalog, schema, and table names.
-        # We consider any event with a `full_name_arg` as an access event.
+        # We query the audit log for 'generateTemporaryTableCredential' actions.
+        # This action is a reliable indicator that a table was accessed for a query.
+        # The table's full path is available directly in the request parameters.
         query = f"""
             SELECT
-                SPLIT(request_params.full_name_arg, '\\.')[0] as table_catalog,
-                SPLIT(request_params.full_name_arg, '\\.')[1] as table_schema,
-                SPLIT(request_params.full_name_arg, '\\.')[2] as table_name,
-                MAX(event_time) as last_accessed_date
+                request_params.table_catalog as table_catalog,
+                request_params.table_schema as table_schema,
+                request_params.table_name as table_name,
+                max(event_time) as last_accessed_date
             FROM system.access.audit
-            WHERE service_name = 'unityCatalog'
-              AND request_params.full_name_arg IS NOT NULL
-              AND SPLIT(request_params.full_name_arg, '\\.')[0] = '{catalog_name}'
-              AND array_size(SPLIT(request_params.full_name_arg, '\\.')) = 3
+            WHERE action_name = 'generateTemporaryTableCredential'
+              AND request_params.table_catalog = '{catalog_name}'
             GROUP BY 1, 2, 3
         """
         return self.spark.sql(query)
