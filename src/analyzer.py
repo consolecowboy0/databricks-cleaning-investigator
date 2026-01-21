@@ -46,9 +46,9 @@ class TableUsageAnalyzer:
         Returns:
             DataFrame: A DataFrame with table identifiers and the last access date.
         """
-        # We query the audit log for 'generateTemporaryTableCredential' actions.
-        # This action is a reliable indicator that a table was accessed for a query.
-        # The table's full path is available directly in the request parameters.
+        # We query the audit log for any events from the 'unityCatalog' service
+        # that include table identifiers. This is a robust way to capture any
+        # interaction with a table, not just a specific credential generation event.
         query = f"""
             SELECT
                 request_params.table_catalog as table_catalog,
@@ -56,8 +56,9 @@ class TableUsageAnalyzer:
                 request_params.table_name as table_name,
                 max(event_time) as last_accessed_date
             FROM system.access.audit
-            WHERE action_name = 'generateTemporaryTableCredential'
+            WHERE service_name = 'unityCatalog'
               AND request_params.table_catalog = '{catalog_name}'
+              AND request_params.table_name IS NOT NULL
             GROUP BY 1, 2, 3
         """
         return self.spark.sql(query)
