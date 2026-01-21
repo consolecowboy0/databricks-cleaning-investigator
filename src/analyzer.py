@@ -38,7 +38,7 @@ class TableUsageAnalyzer:
     def get_last_access_date(self, catalog_name: str) -> DataFrame:
         """
         Retrieves the last access date for tables in the specified catalog
-        from system.access.table_usage.
+        from the system.access.audit table.
 
         Args:
             catalog_name (str): The name of the catalog to scan.
@@ -46,20 +46,22 @@ class TableUsageAnalyzer:
         Returns:
             DataFrame: A DataFrame with table identifiers and the last access date.
         """
-        # Note: Assuming system.access.table_usage exists and has standard UC columns.
-        # If usage_date is not the correct column, this might need adjustment to
-        # audit_date or event_date depending on the specific system table version.
-        # We use max(usage_date) to find the most recent access.
-
+        # We query the audit log for events related to Unity Catalog.
+        # The full table name is extracted from the request_params map.
+        # We then split the full name to get catalog, schema, and table names.
+        # We consider any event with a `full_name_arg` as an access event.
         query = f"""
             SELECT
-                table_catalog,
-                table_schema,
-                table_name,
-                MAX(usage_date) as last_accessed_date
-            FROM system.access.table_usage
-            WHERE table_catalog = '{catalog_name}'
-            GROUP BY table_catalog, table_schema, table_name
+                SPLIT(request_params.full_name_arg, '\\.')[0] as table_catalog,
+                SPLIT(request_params.full_name_arg, '\\.')[1] as table_schema,
+                SPLIT(request_params.full_name_arg, '\\.')[2] as table_name,
+                MAX(event_time) as last_accessed_date
+            FROM system.access.audit
+            WHERE service_name = 'unityCatalog'
+              AND request_params.full_name_arg IS NOT NULL
+              AND SPLIT(request_params.full_name_arg, '\\.')[0] = '{catalog_name}'
+              AND array_size(SPLIT(request_params.full_name_arg, '\\.')) = 3
+            GROUP BY 1, 2, 3
         """
         return self.spark.sql(query)
 

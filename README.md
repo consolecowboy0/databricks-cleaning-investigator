@@ -4,7 +4,7 @@ This repository contains a Databricks-ready tool to identify unused or rarely us
 
 ## Overview
 
-The tool queries the Unity Catalog System Tables (`system.access.table_usage` and `system.information_schema.tables`) to generate a report. It calculates how long it has been since each table was last accessed and identifies tables that have no access usage records.
+The tool queries the Unity Catalog System Tables (`system.access.audit` and `system.information_schema.tables`) to generate a report. It calculates how long it has been since each table was last accessed and identifies tables that have no access usage records.
 
 ## Prerequisites
 
