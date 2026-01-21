@@ -56,9 +56,6 @@ if fetch_sizes:
     print("Fetching table sizes... This may take time.")
     report_df = analyzer.enrich_with_size(report_df)
 
-# Cache the result
-report_df.cache()
-
 # Trigger action
 count = report_df.count()
 print(f"Found {count} tables in catalog '{catalog_name}'.")
